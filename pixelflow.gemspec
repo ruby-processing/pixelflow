@@ -20,4 +20,5 @@ Gem::Specification.new do |spec|
   spec.files << 'lib/PixelFlow.jar'
   spec.require_paths = ['lib']
   spec.add_development_dependency 'rake', '~> 12.0', '>= 12.0.0'
+  spec.platform = 'java'
 end
