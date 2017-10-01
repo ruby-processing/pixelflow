@@ -12,3 +12,4 @@ if RUBY_PLATFORM == 'java'
   module ShaderToy
     java_import 'com.thomasdiewald.pixelflow.java.imageprocessing.DwShadertoy'
   end
+end
