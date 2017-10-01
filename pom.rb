@@ -43,16 +43,7 @@ project 'pixelflow' do
             'manifestFile' =>  'MANIFEST.MF'
           } )
   plugin :resources, '2.6'
-  plugin :dependency, '2.10' do
-    execute_goals( :id => 'default-cli',
-                   'artifactItems' => [ { 'groupId' =>  'args4j',
-                                          'artifactId' =>  'args4j',
-                                          'version' =>  '2.0.31',
-                                          'type' =>  'jar',
-                                          'outputDirectory' =>  'lib' } ] )
-  end
-
-
+  
   build do
     default_goal 'package'
     source_directory 'src'

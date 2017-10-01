@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.description =<<-EOS
   PixelFlow java library wrapped in a rubygem. Compiled and tested with JRubyArt-1.4.1 and processing-3.3.5
   EOS
-  spec.license = %w(MIT)
+  spec.license = 'MIT'
   spec.authors = %w(Thomas\ Diewald Martin\ Prout)
   spec.email = 'mamba2928@yahoo.co.uk'
   spec.homepage = 'http://ruby-processing.github.io/pixelflow/'
