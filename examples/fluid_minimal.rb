@@ -60,7 +60,7 @@ def setup
   context.printGL
   # fluid simulation
   @fluid = DwFluid2D.new(context, VIEWPORT_W, VIEWPORT_H, fluidgrid_scale)
-  cb_fluid_data = lambda do
+  cb_fluid_data = lambda do |obj|
     if mouse_pressed?
       vscale = 15
       px     = mouseX
