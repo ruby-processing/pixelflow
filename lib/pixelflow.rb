@@ -5,11 +5,15 @@ if RUBY_PLATFORM == 'java'
     list.each { |klass| java_import format(string, klass) }
   end
 
-  module DwPixelFlow
+  module PixelFlow
     java_import 'com.thomasdiewald.pixelflow.java.DwPixelFlow'
   end
 
   module ShaderToy
     java_import 'com.thomasdiewald.pixelflow.java.imageprocessing.DwShadertoy'
+  end
+
+  module Fluid
+    java_import 'com.thomasdiewald.pixelflow.java.fluid.DwFluid2D'
   end
 end

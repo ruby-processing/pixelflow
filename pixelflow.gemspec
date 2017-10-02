@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.extra_rdoc_files = %w(README.md LICENSE.md)
   spec.summary = %q(PixelFlow library for JRubyArt and propane)
   spec.description =<<-EOS
-  PixelFlow java library wrapped in a rubygem. Compiled and tested with JRubyArt-1.4.1 and processing-3.3.5
+  PixelFlow java library wrapped in a rubygem. Compiled and tested with JRubyArt-1.4.2 and processing-3.3.5
   EOS
   spec.license = 'MIT'
   spec.authors = %w(Thomas\ Diewald Martin\ Prout)

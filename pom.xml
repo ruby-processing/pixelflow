@@ -11,9 +11,9 @@ DO NOT MODIFIY - GENERATED CODE
   <modelVersion>4.0.0</modelVersion>
   <groupId>ruby-processing</groupId>
   <artifactId>pixelflow</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.3</version>
   <name>pixelflow</name>
-  <description>toxiclibs-library for JRubyArt</description>
+  <description>PixelFlow-library for JRubyArt</description>
   <organization>
     <name>ruby-processing</name>
     <url>https://ruby-processing.github.io</url>
@@ -58,11 +58,6 @@ DO NOT MODIFIY - GENERATED CODE
   </properties>
   <dependencies>
     <dependency>
-      <groupId>args4j</groupId>
-      <artifactId>args4j</artifactId>
-      <version>2.0.31</version>
-    </dependency>
-    <dependency>
       <groupId>org.processing</groupId>
       <artifactId>core</artifactId>
       <version>3.3.5</version>
@@ -81,14 +76,22 @@ DO NOT MODIFIY - GENERATED CODE
   <build>
     <sourceDirectory>src</sourceDirectory>
     <defaultGoal>package</defaultGoal>
+    <resources>
+      <resource>
+        <directory>src</directory>
+        <excludes>
+          <exclude>**/*.java</exclude>
+        </excludes>
+      </resource>
+    </resources>
     <finalName>PixelFlow</finalName>
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.5.1</version>
         <configuration>
-          <source>1.8</source>
-          <target>1.8</target>
+          <source>${maven.compiler.source}</source>
+          <target>${maven.compiler.target}</target>
         </configuration>
       </plugin>
       <plugin>
