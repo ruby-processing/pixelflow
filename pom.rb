@@ -1,7 +1,7 @@
 project 'pixelflow' do
 
   model_version '4.0.0'
-  id 'ruby-processing:pixelflow:1.0.3'
+  id 'ruby-processing:pixelflow:1.0.6'
   packaging 'jar'
 
   description 'PixelFlow-library for JRubyArt'
@@ -30,7 +30,7 @@ project 'pixelflow' do
               'jogl.version' => '2.3.2'
             )
 
-  jar 'org.processing:core:3.3.5'
+  jar 'org.processing:core:3.3.6'
   jar('org.jogamp.jogl:jogl-all:${jogl.version}')
   jar('org.jogamp.gluegen:gluegen-rt-main:${jogl.version}')
 

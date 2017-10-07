@@ -107,7 +107,6 @@ public class DwShadertoy{
   
   public void release(){
     tex.release();
-    reset();
   }
   
   
@@ -115,6 +114,7 @@ public class DwShadertoy{
     boolean resized = tex.resize(context, GL2.GL_RGBA32F, w, h, GL2.GL_RGBA, GL2.GL_FLOAT, GL2.GL_LINEAR, GL2.GL_CLAMP_TO_EDGE, 4, 4);
     if(resized && auto_reset_on_resize){
       reset();
+      tex.clear(0.0f);
     }
     return resized;
   }
@@ -437,6 +437,61 @@ public class DwShadertoy{
     }
   }
   
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+
+  
+  static public enum TexFilter{
+    NEAREST(GL2.GL_NEAREST, GL2.GL_NEAREST),
+    LINEAR(GL2.GL_LINEAR, GL2.GL_LINEAR),
+    MIPMAP(GL2.GL_LINEAR_MIPMAP_LINEAR, GL2.GL_LINEAR);
+    
+    int min, mag;
+    
+    private TexFilter(int min, int mag){
+      this.min = min;
+      this.mag = mag;
+    }
+  }
+  
+  static public enum TexWrap{
+    CLAMP(GL2.GL_CLAMP_TO_EDGE),
+    REPEAT(GL2.GL_MIRRORED_REPEAT);
+    
+    int wrap;
+    
+    private TexWrap(int wrap){
+      this.wrap = wrap;
+    }
+  }
+  
+    
+  public static void setTextureFilter(DwGLTexture tex, TexFilter filter){
+    tex.setParamFilter(filter.min, filter.mag);
+    if(filter == TexFilter.MIPMAP){
+      tex.generateMipMap();
+    }
+  }
+  public static void setTextureWrap(DwGLTexture tex, TexWrap wrap){
+    tex.setParamWrap(wrap.wrap); 
+  }
+
+  
+
   
   
 }

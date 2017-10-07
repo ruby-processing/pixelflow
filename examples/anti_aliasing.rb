@@ -2,23 +2,17 @@ require 'pixelflow'
 load_library :peasycam
 
 # java_imports
-module AA
-  java_import 'com.thomasdiewald.pixelflow.java.DwPixelFlow'
-  java_import 'com.thomasdiewald.pixelflow.java.antialiasing.FXAA.FXAA'
-  java_import 'com.thomasdiewald.pixelflow.java.antialiasing.GBAA.GBAA'
-  java_import 'com.thomasdiewald.pixelflow.java.antialiasing.SMAA.SMAA'
-  java_import 'com.thomasdiewald.pixelflow.java.dwgl.DwGLTextureUtils'
-  java_import 'com.thomasdiewald.pixelflow.java.geometry.DwCube'
-  java_import 'com.thomasdiewald.pixelflow.java.geometry.DwMeshUtils'
-  java_import 'com.thomasdiewald.pixelflow.java.imageprocessing.filter.DwFilter'
-  java_import 'com.thomasdiewald.pixelflow.java.render.skylight.DwSceneDisplay'
-  java_import 'com.thomasdiewald.pixelflow.java.utils.DwMagnifier'
-  java_import 'peasy.PeasyCam'
-  java_import 'processing.core.PShape'
-  java_import 'processing.opengl.PJOGL'
-end
 
-include AA
+java_import 'peasy.PeasyCam'
+java_import 'processing.core.PShape'
+java_import 'processing.opengl.PJOGL'
+
+include Antialiasing
+include DwGL
+include Filters
+include Geometry
+include Render
+include PixelFlowUtils
 
 VIEWPORT_W = 1280
 VIEWPORT_H = 720
