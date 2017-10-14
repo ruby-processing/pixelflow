@@ -64,6 +64,10 @@ public class GaussianBlurPyramid {
     return BLUR_LAYERS;
   }
   
+  public DwGLTexture getTexture(int layer){
+    return tex_blur[layer];
+  }
+  
   public void release(){
     for(int i = 0; i < tex_blur.length; i++){
       if(tex_temp[i] != null) tex_temp[i].release();

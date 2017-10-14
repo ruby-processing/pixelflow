@@ -79,6 +79,11 @@ public class DwFlowFieldParticles{
     public int wh_scale_col = 0; // 1 << wh_scale_col ... 1 << 0 ...  1
     public int wh_scale_coh = 4; // 1 << wh_scale_coh ... 1 << 4 ... 16
     public int wh_scale_obs = 0; // 1 << wh_scale_obs ... 1 << 0 ...  2
+    public int wh_scale_sum = 0; // auto
+    
+    
+    public float[] acc_minmax = {0.01f, 12f};
+    public float[] vel_minmax = {0.00f, 12f};
     
     // velocity damping
     public float   velocity_damping  = 0.985f;
@@ -93,6 +98,7 @@ public class DwFlowFieldParticles{
     
     // display stuff
     public float   shader_collision_mult = 0.1f;
+    public int     shader_type = 0; // 0 ... point based, 1 ...velocity based
     
     public float[] col_A = {1.0f, 1.0f, 1.0f, 10.0f};
     public float[] col_B = {0.0f, 0.0f, 0.0f,  0.0f};
@@ -103,6 +109,7 @@ public class DwFlowFieldParticles{
     public float   display_line_width = 0.5f;
     public boolean display_line_smooth = true;
     
+
     // point sprite texture
     public DwGLTexture tex_sprite = new DwGLTexture();
   }
@@ -130,6 +137,7 @@ public class DwFlowFieldParticles{
   public DwGLTexture tex_col_dist = new DwGLTexture();
   public DwGLTexture tex_obs_dist = new DwGLTexture();
   public DwGLTexture tex_coh_dist = new DwGLTexture();
+  public DwGLTexture tex_tmp_dist = new DwGLTexture();
   
   public DwFlowField ff_col;
   public DwFlowField ff_obs;
@@ -142,8 +150,12 @@ public class DwFlowFieldParticles{
   
   public DistanceTransform distancetransform;
   
-  protected int spawn_idx = 0;
+  public int spawn_idx = 0;
   protected int spawn_num = 0;
+  
+  public DwFlowFieldParticles(DwPixelFlow context){
+    this(context, 0);
+  }
   
   public DwFlowFieldParticles(DwPixelFlow context, int num_particles){    
     this.context = context;
@@ -167,17 +179,18 @@ public class DwFlowFieldParticles{
     
     filename = data_path + "particles_display_points.glsl"; // "particles_display_quads.glsl"
     shader_display_particles = context.createShader((Object) (this+"SPRITE"), filename, filename);
-    shader_display_particles.frag.setDefine("SHADER_FRAG", 1);
     shader_display_particles.vert.setDefine("SHADER_VERT", 1);
+    shader_display_particles.frag.setDefine("SHADER_FRAG", 1);
+
     
     filename = data_path + "particles_display_lines.glsl";
     shader_display_trails     = context.createShader((Object) (this+"LINES"), filename, filename);
-    shader_display_trails.frag.setDefine("SHADER_FRAG", 1);
     shader_display_trails.vert.setDefine("SHADER_VERT", 1);
+    shader_display_trails.frag.setDefine("SHADER_FRAG", 1);
 
     shader_particles_dist = context.createShader(data_path+"particles_dist.glsl", data_path+"particles_dist.glsl");
-    shader_particles_dist.frag.setDefine("SHADER_FRAG", 1);
     shader_particles_dist.vert.setDefine("SHADER_VERT", 1);
+    shader_particles_dist.frag.setDefine("SHADER_FRAG", 1);
     
     shader_obstacles_dist = context.createShader(data_path+"obstacles_dist.frag");
     shader_obstacles_FG   = context.createShader(data_path+"obstacles_FG.frag");
@@ -185,7 +198,7 @@ public class DwFlowFieldParticles{
 
     ff_col = new DwFlowField(context);
     ff_col.param.blur_iterations = 1;
-    ff_col.param.blur_radius     = 3;
+    ff_col.param.blur_radius     = 2;
     
     ff_obs = new DwFlowField(context);
     ff_obs.param.blur_iterations = 1;
@@ -240,23 +253,28 @@ public class DwFlowFieldParticles{
 
   
   public int getCollisionSize(){
-    float scale_col = 1 << param.wh_scale_col;
-    int radius = (int) Math.ceil(param.size_collision * 2f / scale_col);
+    float scale = 1 << Math.abs(param.wh_scale_col);
+    if(param.wh_scale_col < 0) scale = 1f / scale;
+    
+    int radius = (int) Math.ceil(param.size_collision * 2f / scale);
     radius += 1 - (radius & 1); // make radius an odd number
-//    radius += (radius & 1); //  make radius an even number
     return radius;
   }
   
   public int getCohesionSize(){
-    float scale_coh = 1 << param.wh_scale_coh;
-    int radius = (int) Math.ceil(param.size_cohesion * 16 / scale_coh);
+    float scale = 1 << Math.abs(param.wh_scale_coh);
+    if(param.wh_scale_coh < 0) scale = 1f / scale;
+
+    int radius = (int) Math.ceil(param.size_cohesion * 16 / scale);
     radius += 1 - (radius & 1); // make radius an odd number
     return radius;
   }
   
   public int getObstacleSize(){
-    float scale_obs = 1 << param.wh_scale_obs;
-    int radius = (int) Math.ceil(param.size_collision / (2f * scale_obs));
+    float scale = 1 << Math.abs(param.wh_scale_obs);
+    if(param.wh_scale_obs < 0) scale = 1f / scale;
+    
+    int radius = (int) Math.ceil(param.size_collision / (2f * scale));
     radius += 1 - (radius & 1); // make radius an odd number
     return radius;
   }
@@ -298,6 +316,7 @@ public class DwFlowFieldParticles{
     tex_obs_dist.release();
     tex_col_dist.release();
     tex_coh_dist.release();
+    tex_tmp_dist.release();
     
 
   }
@@ -307,11 +326,20 @@ public class DwFlowFieldParticles{
   
   public boolean resizeWorld(int w, int h){
     
-    float scale_obs = 1 << param.wh_scale_obs;
-    float scale_col = 1 << param.wh_scale_col;
-    float scale_coh = 1 << param.wh_scale_coh;
+    param.wh_scale_sum = Math.min(Math.min(param.wh_scale_col, param.wh_scale_coh), param.wh_scale_obs);
     
-    int w_sum = w,                            h_sum = h;
+    float scale_obs = 1 << Math.abs(param.wh_scale_obs);
+    float scale_col = 1 << Math.abs(param.wh_scale_col);
+    float scale_coh = 1 << Math.abs(param.wh_scale_coh);
+    float scale_sum = 1 << Math.abs(param.wh_scale_sum);
+    
+    if(param.wh_scale_obs < 0) scale_obs = 1f / scale_obs;
+    if(param.wh_scale_col < 0) scale_col = 1f / scale_col;
+    if(param.wh_scale_coh < 0) scale_coh = 1f / scale_coh;
+    if(param.wh_scale_sum < 0) scale_sum = 1f / scale_sum;
+
+//    int w_sum = w,                            h_sum = h;
+    int w_sum = (int) Math.ceil(w/scale_sum), h_sum = (int) Math.ceil(h/scale_sum);
     int w_obs = (int) Math.ceil(w/scale_obs), h_obs = (int) Math.ceil(h/scale_obs);
     int w_col = (int) Math.ceil(w/scale_col), h_col = (int) Math.ceil(h/scale_col);
     int w_coh = (int) Math.ceil(w/scale_coh), h_coh = (int) Math.ceil(h/scale_coh);
@@ -329,6 +357,8 @@ public class DwFlowFieldParticles{
     resized |= tex_obs_dist.resize(context, GL2.GL_R32F, w_obs, h_obs, GL2.GL_RED, GL2.GL_FLOAT, GL2.GL_LINEAR, GL2.GL_CLAMP_TO_EDGE, 1, 4);
     resized |= tex_col_dist.resize(context, GL2.GL_R32F, w_col, h_col, GL2.GL_RED, GL2.GL_FLOAT, GL2.GL_LINEAR, GL2.GL_CLAMP_TO_EDGE, 1, 4);
     resized |= tex_coh_dist.resize(context, GL2.GL_R32F, w_coh, h_coh, GL2.GL_RED, GL2.GL_FLOAT, GL2.GL_LINEAR, GL2.GL_CLAMP_TO_EDGE, 1, 4);
+    
+    resized |= tex_tmp_dist.resize(context, GL2.GL_R32F, w_col, h_col, GL2.GL_RED, GL2.GL_FLOAT, GL2.GL_LINEAR, GL2.GL_CLAMP_TO_EDGE, 1, 4);
 
     return resized;
   }
@@ -429,7 +459,7 @@ public class DwFlowFieldParticles{
     
     spawn_idx = hi;
     spawn_num += hi - lo;
-    spawn_num = Math.min(spawn_num, spawn_max); 
+    spawn_num = Math.min(spawn_num, spawn_max);
   }
   
   
@@ -471,7 +501,7 @@ public class DwFlowFieldParticles{
     
     spawn_idx = hi;
     spawn_num += hi - lo;
-    spawn_num = Math.min(spawn_num, spawn_max); 
+    spawn_num = Math.min(spawn_num, spawn_max);
   }
   
 
@@ -514,29 +544,30 @@ public class DwFlowFieldParticles{
   }
   
   
-  protected void displayParticles(int w, int h){
+  protected void displayParticles(int w_viewport, int h_viewport){
     if(param.size_display <= 0) return;
-    int w_velocity = ff_sum.tex_vel.w;
-    int h_velocity = ff_sum.tex_vel.h;
     int w_particle = tex_particle.src.w;
     int h_particle = tex_particle.src.h;
+    int point_size = param.size_display;
     blendMode();
+//    context.gl.getGL3().glPointSize(point_size);
+    shader_display_particles.frag.setDefine("SHADING_TYPE", param.shader_type);
     shader_display_particles.begin();
     shader_display_particles.uniform1f     ("shader_collision_mult", param.shader_collision_mult);
-    shader_display_particles.uniform1f     ("point_size"   , param.size_display);
+    shader_display_particles.uniform1f     ("point_size"   , point_size);
     shader_display_particles.uniform2i     ("wh_position"  , w_particle, h_particle);
-    shader_display_particles.uniform2f     ("wh_velocity"  , w_velocity, h_velocity);
+    shader_display_particles.uniform2f     ("wh_viewport"  , w_viewport, h_viewport);
     shader_display_particles.uniform4fv    ("col_A"        , 1, param.col_A);
     shader_display_particles.uniform4fv    ("col_B"        , 1, param.col_B);
     shader_display_particles.uniformTexture("tex_collision", tex_col_dist);
     shader_display_particles.uniformTexture("tex_position" , tex_particle.src);
     shader_display_particles.uniformTexture("tex_sprite"   , param.tex_sprite);
-    shader_display_particles.drawFullScreenPoints(0, 0, w, h, spawn_num, false);
+    shader_display_particles.drawFullScreenPoints(spawn_num);
     shader_display_particles.end();
   }
   
   
-  protected void displayTrail(int w, int h){
+  protected void displayTrail(int w_viewport, int h_viewport){
     if(param.display_line_width <= 0) return;
     int w_particle = tex_particle.src.w;
     int h_particle = tex_particle.src.h;
@@ -544,10 +575,11 @@ public class DwFlowFieldParticles{
     shader_display_trails.begin();
     shader_display_trails.uniform1f     ("shader_collision_mult", param.shader_collision_mult);
     shader_display_trails.uniform2i     ("wh_position"  , w_particle, h_particle);
+    shader_display_trails.uniform2f     ("wh_viewport"  , w_viewport, h_viewport);
     shader_display_trails.uniform4fv    ("col_A"        , 1, param.col_A);
     shader_display_trails.uniformTexture("tex_collision", tex_col_dist);
     shader_display_trails.uniformTexture("tex_position" , tex_particle.src);
-    shader_display_trails.drawFullScreenLines(0, 0, w, h, spawn_num, param.display_line_width, param.display_line_smooth);
+    shader_display_trails.drawFullScreenLines(0, 0, w_viewport, h_viewport, spawn_num, param.display_line_width, param.display_line_smooth);
     shader_display_trails.end();
   }
   
@@ -557,11 +589,12 @@ public class DwFlowFieldParticles{
   public void createCollisionFlowField(){
     if(param.mul_col <= 0 || param.size_collision <= 0) return;
     
-    int w = tex_col_dist.w;
-    int h = tex_col_dist.h;
+    int w_viewport = tex_col_dist.w;
+    int h_viewport = tex_col_dist.h;
     int w_particle = tex_particle.src.w;
     int h_particle = tex_particle.src.h;
-
+    int point_size = getCollisionSize();
+    
     context.begin();
     {
       // 1) create distance field
@@ -572,16 +605,24 @@ public class DwFlowFieldParticles{
       context.gl.glEnable(GL.GL_BLEND);
       context.gl.glBlendEquation(GL.GL_FUNC_ADD);
       context.gl.glBlendFunc(GL.GL_SRC_COLOR, GL.GL_ONE); // ADD
+//      context.gl.getGL3().glPointSize(point_size);
       shader_particles_dist.begin();
-      shader_particles_dist.uniform1f     ("point_size"  , getCollisionSize());
+      shader_particles_dist.uniform1f     ("point_size"  , point_size);
       shader_particles_dist.uniform2i     ("wh_position" , w_particle, h_particle);
+      shader_particles_dist.uniform2f     ("wh_viewport" , w_viewport, h_viewport);
       shader_particles_dist.uniformTexture("tex_position", tex_particle.src);
-      shader_particles_dist.drawFullScreenPoints(0, 0, w, h, spawn_num, false);
+      shader_particles_dist.drawFullScreenPoints(spawn_num);
       shader_particles_dist.end();
       context.endDraw("DwFlowFieldParticles.createCollisionFlowField");
       
+      // .) smooth distance field
+      DwFilter.get(context).gaussblur.apply(tex_col_dist, tex_col_dist, tex_tmp_dist, 1);
+      
       // 2) create flow field
       ff_col.create(tex_col_dist);
+      
+      // .) smooth distance field
+      //  DwFilter.get(context).gaussblur.apply(tex_col_dist, tex_col_dist, tex_tmp_dist, 1);
     }
     context.end();
   }
@@ -589,11 +630,11 @@ public class DwFlowFieldParticles{
   public void createCohesionFlowField(){
     if(param.mul_coh <= 0 || param.size_cohesion <= 0) return;
     
-    int w = tex_coh_dist.w;
-    int h = tex_coh_dist.h;
-    
+    int w_viewport = tex_coh_dist.w;
+    int h_viewport = tex_coh_dist.h;
     int w_particle = tex_particle.src.w;
     int h_particle = tex_particle.src.h;
+    int point_size = getCohesionSize();
 
     context.begin();
     {
@@ -605,11 +646,13 @@ public class DwFlowFieldParticles{
       context.gl.glEnable(GL.GL_BLEND);
       context.gl.glBlendEquation(GL.GL_FUNC_ADD);
       context.gl.glBlendFunc(GL.GL_SRC_COLOR, GL.GL_ONE); // ADD
+//      context.gl.getGL3().glPointSize(point_size);
       shader_particles_dist.begin();
-      shader_particles_dist.uniform1f     ("point_size"  , getCohesionSize());
+      shader_particles_dist.uniform1f     ("point_size"  , point_size);
       shader_particles_dist.uniform2i     ("wh_position" , w_particle, h_particle);
+      shader_particles_dist.uniform2f     ("wh_viewport" , w_viewport, h_viewport);
       shader_particles_dist.uniformTexture("tex_position", tex_particle.src);
-      shader_particles_dist.drawFullScreenPoints(0, 0, w, h, spawn_num, false);
+      shader_particles_dist.drawFullScreenPoints(spawn_num);
       shader_particles_dist.end();
       context.endDraw("DwFlowFieldParticles.createCohesionFlowField");
        
@@ -689,23 +732,27 @@ public class DwFlowFieldParticles{
     int viewport_h = (spawn_num + w_particle) / w_particle;
 
     float timestep = getTimestep();
+    float acc_min = param.acc_minmax[0] * timestep;
+    float acc_max = param.acc_minmax[1] * timestep;
     
     context.begin();
     context.beginDraw(tex_particle.dst);
     shader_update_acc.begin();
     shader_update_acc.uniform1i     ("spawn_hi"       , spawn_num);
-    shader_update_acc.uniform2f     ("acc_minmax"     , 0.01f * timestep, 12 * timestep);
+    shader_update_acc.uniform2f     ("acc_minmax"     , acc_min, acc_max);
     shader_update_acc.uniform1f     ("acc_mult"       , acc_mult);
     shader_update_acc.uniform2i     ("wh_position"    ,    w_particle,    h_particle);
     shader_update_acc.uniform2f     ("wh_velocity_rcp", 1f/w_velocity, 1f/h_velocity);
     shader_update_acc.uniformTexture("tex_position"   , tex_particle.src);
     shader_update_acc.uniformTexture("tex_velocity"   , tex_velocity);
+    shader_update_acc.uniformTexture("tex_collision"  , tex_col_dist);
     shader_update_acc.drawFullScreenQuad(0, 0, viewport_w, viewport_h);
     shader_update_acc.end();
     context.endDraw("DwFlowFieldParticles.updateAcceleration");
     tex_particle.swap();
     context.end();
   }
+  
   
  
   public void updateVelocity(){
@@ -719,18 +766,21 @@ public class DwFlowFieldParticles{
     int viewport_w = w_particle;
     int viewport_h = (spawn_num + w_particle) / w_particle;
 
-    float vel_mult = param.velocity_damping;
     float timestep = getTimestep();
+    float vel_mult = param.velocity_damping;
+    float vel_min = param.vel_minmax[0] * timestep;
+    float vel_max = param.vel_minmax[1] * timestep;
     
     context.begin();
     context.beginDraw(tex_particle.dst);
     shader_update_vel.begin();
     shader_update_vel.uniform1i     ("spawn_hi"       , spawn_num);
-    shader_update_vel.uniform2f     ("vel_minmax"     , 0.000f * timestep, 12 * timestep);
+    shader_update_vel.uniform2f     ("vel_minmax"     , vel_min, vel_max);
     shader_update_vel.uniform1f     ("vel_mult"       , vel_mult);
     shader_update_vel.uniform2i     ("wh_position"    ,    w_particle,    h_particle);
     shader_update_vel.uniform2f     ("wh_velocity_rcp", 1f/w_velocity, 1f/h_velocity);
     shader_update_vel.uniformTexture("tex_position"   , tex_particle.src);
+    shader_update_vel.uniformTexture("tex_collision"  , tex_col_dist);
     shader_update_vel.drawFullScreenQuad(0, 0, viewport_w, viewport_h);
     shader_update_vel.end("DwFlowFieldParticles.updateVelocity");
     context.endDraw();
