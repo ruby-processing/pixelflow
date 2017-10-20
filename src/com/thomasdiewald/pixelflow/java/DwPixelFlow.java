@@ -38,14 +38,14 @@ public class DwPixelFlow{
                                      
   static public class PixelFlowInfo{
     
-    static public final String version = "1.13";
+    static public final String version = "1.18";
     static public final String name    = "PixelFlow";
     static public final String author  = "Thomas Diewald";
-    static public final String web     = "http://www.thomasdiewald.com";
-    static public final String git     = "https://github.com/diwi/PixelFlow.git";
+    static public final String web     = "www.thomasdiewald.com";
+    static public final String git     = "github.com/diwi/PixelFlow.git";
     
     public String toString(){
-      return name+" v"+version +"  -  "+web;
+      return "[-] "+name+" v"+version +" - "+web+"";
     }
   }
 
@@ -188,7 +188,7 @@ public class DwPixelFlow{
   
   PGraphicsOpenGL pgl_dst = null;
   public void beginDraw(PGraphicsOpenGL dst){
-    beginDraw(dst, true);
+    beginDraw(dst, dst.smooth != 0);
   }
   
   public void beginDraw(PGraphicsOpenGL dst, boolean multisample){
@@ -198,19 +198,38 @@ public class DwPixelFlow{
       return;
     }
     
-    ACTIVE_FRAMEBUFFER = true;
-    
+    // 1) first try, multisample could be true, else try without multisample
     FrameBuffer fbo = dst.getFrameBuffer(multisample);
     if(fbo == null){
-      multisample = false;
-      fbo = dst.getFrameBuffer(multisample);
+      fbo = dst.getFrameBuffer(false);
     }
+    
+    // 2) try again, but explicitly load the texture now
+    if(fbo == null){
+      end();
+      dst.loadTexture();
+      begin();
+
+      fbo = dst.getFrameBuffer(multisample);
+      if(fbo == null){
+        fbo = dst.getFrameBuffer(false);
+      }
+    }
+    
+    if(fbo == null){
+      System.out.println("DwPixelFlow.beginDraw(PGraphicsOpenGL) ERROR: Texture not initialized");
+      return;
+    }
+    
+    multisample = (fbo == dst.getFrameBuffer(true));
+  
     fbo.bind();
     defaultRenderSettings(0, 0, fbo.width, fbo.height);
     if(multisample){
       gl.glEnable(GL.GL_MULTISAMPLE);
     }
-    this.pgl_dst = dst;
+    pgl_dst = dst;
+    ACTIVE_FRAMEBUFFER = true;
   }
   
   public void endDraw(){
@@ -223,7 +242,6 @@ public class DwPixelFlow{
    
       if(pgl_dst != null){
         updateFBO(pgl_dst);
-        
         pgl_dst = null;
       }
     }
@@ -243,6 +261,7 @@ public class DwPixelFlow{
     if (ofb != null && mfb != null) {
       mfb.copyColor(ofb);
     }
+    // errorCheck("DwPixelFlow.updateFBO(PGraphicsOpenGL pg)");
   }
   
   
@@ -283,8 +302,11 @@ public class DwPixelFlow{
   
   
   
-  
-  
+  //////////////////////////////////////////////////////////////////////////////
+  //
+  // SHADER FACTORY
+  //
+  //////////////////////////////////////////////////////////////////////////////
   
   public DwGLSLProgram createShader(String path_fragmentshader){
     return createShader((Object)null, path_fragmentshader);
@@ -323,10 +345,8 @@ public class DwPixelFlow{
   
   
   
-  
-  
-  
 
+  // TODO: DwGLTextureUtils
   public void getGLTextureHandle(PGraphicsOpenGL pg, int[] tex_handle){
     int fbo_handle = pg.getFrameBuffer().glFbo;
     int target     = GL2ES2.GL_FRAMEBUFFER;
@@ -354,45 +374,158 @@ public class DwPixelFlow{
   
   
   
-  public void printGL(){
+  
+  
+  
+  
+  
+  
+  
+  
+  //////////////////////////////////////////////////////////////////////////////
+  //
+  // GL/GLSL Info
+  //
+  //////////////////////////////////////////////////////////////////////////////
 
-    System.out.println("-------------------------------------------------------------------");
+  
+  
+  public void printGL(){
     GLContext glcontext = gl.getContext();
     
-    String opengl_version    = gl.glGetString(GL2ES2.GL_VERSION).trim();
-    String opengl_vendor     = gl.glGetString(GL2ES2.GL_VENDOR).trim();
+//    String opengl_version    = gl.glGetString(GL2ES2.GL_VERSION).trim();
+//    String opengl_vendor     = gl.glGetString(GL2ES2.GL_VENDOR).trim();
     String opengl_renderer   = gl.glGetString(GL2ES2.GL_RENDERER).trim();
-  //  String opengl_extensions = gl.glGetString(GL2ES2.GL_EXTENSIONS).trim();
+//    String opengl_extensions = gl.glGetString(GL2ES2.GL_EXTENSIONS).trim();
 //    String glsl_version      = gl.glGetString(GL2ES2.GL_SHADING_LANGUAGE_VERSION).trim();
-  
-    System.out.println("    OPENGL_VENDOR:         "+opengl_vendor);
-    System.out.println("    OPENGL_RENDERER:       "+opengl_renderer);
-    System.out.println("    OPENGL_VERSION:        "+opengl_version);
+    
+    String GLSLVersionString = glcontext.getGLSLVersionString().trim();
+    String GLSLVersionNumber = glcontext.getGLSLVersionNumber()+"";
+    String GLVersion         = glcontext.getGLVersion().trim();
+//    System.out.println("    OPENGL_VENDOR:         "+opengl_vendor);
+//    System.out.println("    OPENGL_RENDERER:       "+opengl_renderer);
+//    System.out.println("    OPENGL_VERSION:        "+opengl_version);
 //    System.out.println("    OPENGL_EXTENSIONS:     "+opengl_extensions);
 //    System.out.println("    GLSL_VERSION:          "+glsl_version);
-    
-    System.out.println("    GLSLVersionString:     "+ glcontext.getGLSLVersionString().trim());
-    System.out.println("    GLSLVersionNumber:     "+ glcontext.getGLSLVersionNumber());
-    System.out.println("    GLVersion:             "+ glcontext.getGLVersion().trim());
-    System.out.println("    GLVendorVersionNumber: "+ glcontext.getGLVendorVersionNumber());
+//    System.out.println("    GLSLVersionString:     "+ GLSLVersionString);
+//    System.out.println("    GLSLVersionNumber:     "+ GLSLVersionNumber);
+//    System.out.println("    GLVersion:             "+ glcontext.getGLVersion().trim());
+//    System.out.println("    GLVendorVersionNumber: "+ glcontext.getGLVendorVersionNumber());
 //    System.out.println("    GLVersionNumber:       "+ glcontext.getGLVersionNumber());
     
-    System.out.println("-------------------------------------------------------------------");
-    
+    System.out.println();
+    System.out.println("[-] DEVICE ... " + opengl_renderer);
+    System.out.println("[-] GLSL ..... " + GLSLVersionString + " / "+ GLSLVersionNumber);
+    System.out.println("[-] GL ....... " + GLVersion);
+    System.out.println();
   }
 
+  
+  
+  public void printGL_Extensions(){
+    String gl_extensions = gl.glGetString(GL2ES2.GL_EXTENSIONS).trim();
+    String[] list = gl_extensions.split(" ");
+    
+    System.out.println();
+    System.out.printf("[-] %d etensions\n", list.length);
+    for(int i = 0; i < list.length; i++){
+      System.out.printf("  [-] %d - %s\n", i, list[i].trim());
+    }
+    System.out.println();
+  }
+  
   
   public void print(){
     System.out.println(INFO);
   }
   
   
+  // https://www.khronos.org/registry/OpenGL/extensions/NVX/NVX_gpu_memory_info.txt
+  static public final String  GL_NVX_gpu_memory_info                       = "GL_NVX_gpu_memory_info";
+  static public final int     GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX         = 0x9047;
+  static public final int     GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX   = 0x9048;
+  static public final int     GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX = 0x9049;
+  static public final int     GPU_MEMORY_INFO_EVICTION_COUNT_NVX           = 0x904A;
+  static public final int     GPU_MEMORY_INFO_EVICTED_MEMORY_NVX           = 0x904B;
+  
+  // https://www.khronos.org/registry/OpenGL/extensions/ATI/ATI_meminfo.txt
+  //    [0] - total memory free in the pool
+  //    [1] - largest available free block in the pool
+  //    [2] - total auxiliary memory free
+  //    [3] - largest auxiliary free block
+  static public final String  ATI_meminfo                  = "ATI_meminfo";
+  static public final int     VBO_FREE_MEMORY_ATI          = 0x87FB;
+  static public final int     TEXTURE_FREE_MEMORY_ATI      = 0x87FC;
+  static public final int     RENDERBUFFER_FREE_MEMORY_ATI = 0x87FD;
+  
+  
+  static public boolean       VAL_GL_NVX_gpu_memory_info                       = false;
+  static public int[]         VAL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX         = {0};
+  static public int[]         VAL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX   = {0};
+  static public int[]         VAL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX = {0};
+  static public int[]         VAL_GPU_MEMORY_INFO_EVICTION_COUNT_NVX           = {0};
+  static public int[]         VAL_GPU_MEMORY_INFO_EVICTED_MEMORY_NVX           = {0};
+  
+  static public boolean       VAL_ATI_meminfo                  = false;
+  static public int[]         VAL_VBO_FREE_MEMORY_ATI          = {0,0,0,0};
+  static public int[]         VAL_TEXTURE_FREE_MEMORY_ATI      = {0,0,0,0};
+  static public int[]         VAL_RENDERBUFFER_FREE_MEMORY_ATI = {0,0,0,0};
+  
+  
 
+  public void updateGL_MemoryInfo(){
+    VAL_GL_NVX_gpu_memory_info = gl.isExtensionAvailable(GL_NVX_gpu_memory_info);
+    if(VAL_GL_NVX_gpu_memory_info){
+      gl.glGetIntegerv(GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX        , VAL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX        , 0);
+      gl.glGetIntegerv(GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX  , VAL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX  , 0);
+      gl.glGetIntegerv(GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, VAL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, 0);
+      gl.glGetIntegerv(GPU_MEMORY_INFO_EVICTION_COUNT_NVX          , VAL_GPU_MEMORY_INFO_EVICTION_COUNT_NVX          , 0);
+      gl.glGetIntegerv(GPU_MEMORY_INFO_EVICTED_MEMORY_NVX          , VAL_GPU_MEMORY_INFO_EVICTED_MEMORY_NVX          , 0);
+    }
+    
+    VAL_ATI_meminfo = gl.isExtensionAvailable(ATI_meminfo);
+    if(VAL_ATI_meminfo){
+      gl.glGetIntegerv(VBO_FREE_MEMORY_ATI         , VAL_VBO_FREE_MEMORY_ATI         , 0);
+      gl.glGetIntegerv(TEXTURE_FREE_MEMORY_ATI     , VAL_TEXTURE_FREE_MEMORY_ATI     , 0);
+      gl.glGetIntegerv(RENDERBUFFER_FREE_MEMORY_ATI, VAL_RENDERBUFFER_FREE_MEMORY_ATI, 0);
+    }
+  }
+  
+  
+  public void printGL_MemoryInfo(){
+    
+    updateGL_MemoryInfo();
 
+    if(VAL_GL_NVX_gpu_memory_info)
+    {
+      System.out.printf("[-] %s\n", GL_NVX_gpu_memory_info);
+      System.out.printf("  [-] GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX         (MB) = %d\n", (VAL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX        [0] >> 10));
+      System.out.printf("  [-] GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX   (MB) = %d\n", (VAL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX  [0] >> 10));
+      System.out.printf("  [-] GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX (MB) = %d\n", (VAL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX[0] >> 10));
+      System.out.printf("  [-] GPU_MEMORY_INFO_EVICTION_COUNT_NVX                = %d\n", (VAL_GPU_MEMORY_INFO_EVICTION_COUNT_NVX          [0]      ));
+      System.out.printf("  [-] GPU_MEMORY_INFO_EVICTED_MEMORY_NVX           (MB) = %d\n", (VAL_GPU_MEMORY_INFO_EVICTED_MEMORY_NVX          [0] >> 10));
+      System.out.printf("\n");
+    }
+     
+    if(VAL_ATI_meminfo)
+    {
+      System.out.printf("[-] %s\n", ATI_meminfo);
+      System.out.printf("  [-] VBO_FREE_MEMORY_ATI          (MB) = %d\n", (VAL_VBO_FREE_MEMORY_ATI         [0] >> 10)
+                                                                        , (VAL_VBO_FREE_MEMORY_ATI         [1] >> 10)
+                                                                        , (VAL_VBO_FREE_MEMORY_ATI         [2] >> 10)
+                                                                        , (VAL_VBO_FREE_MEMORY_ATI         [3] >> 10));
+      System.out.printf("  [-] TEXTURE_FREE_MEMORY_ATI      (MB) = %d\n", (VAL_TEXTURE_FREE_MEMORY_ATI     [0] >> 10)
+                                                                        , (VAL_TEXTURE_FREE_MEMORY_ATI     [1] >> 10)
+                                                                        , (VAL_TEXTURE_FREE_MEMORY_ATI     [2] >> 10)
+                                                                        , (VAL_TEXTURE_FREE_MEMORY_ATI     [3] >> 10));
+      System.out.printf("  [-] RENDERBUFFER_FREE_MEMORY_ATI (MB) = %d\n", (VAL_RENDERBUFFER_FREE_MEMORY_ATI[0] >> 10)
+                                                                        , (VAL_RENDERBUFFER_FREE_MEMORY_ATI[1] >> 10)
+                                                                        , (VAL_RENDERBUFFER_FREE_MEMORY_ATI[2] >> 10)
+                                                                        , (VAL_RENDERBUFFER_FREE_MEMORY_ATI[3] >> 10));
+    }
+  }
+  
   
 
 
-  
-  
-  
 }

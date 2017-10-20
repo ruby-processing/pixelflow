@@ -1,8 +1,8 @@
 /**
  * 
- * PixelFlow | Copyright (C) 2017 Thomas Diewald (www.thomasdiewald.com)
+ * PixelFlow | Copyright (C) 2017 Thomas Diewald - www.thomasdiewald.com
  * 
- * src  - www.github.com/diwi/PixelFlow
+ * https://github.com/diwi/PixelFlow.git
  * 
  * A Processing/Java library for high performance GPU-Computing.
  * MIT License: https://opensource.org/licenses/MIT
@@ -34,6 +34,8 @@ public class DwSkyLightRenderer {
   
   static public class Param{
     public float gamma = 2.2f;
+    public int   wh_sky_mult = 0;
+    public int   wh_sun_mult = 0;
   }
   
   public Param param = new Param();
@@ -66,44 +68,40 @@ public class DwSkyLightRenderer {
     this.sky = sky;
     this.sun = sun;
     
-    resize();
+    resize(papplet.width, papplet.height);
   }
   
   
-  public void resize(){
-    int w = papplet.width;
-    int h = papplet.height;
+  public boolean resize(int w, int h){
+    boolean[] resized = {false};
     
-    pg_render = (PGraphics3D) papplet.createGraphics(w, h, PConstants.P3D);
-    pg_render.smooth(0);
-    pg_render.textureSampling(5);
+    pg_render = DwGLTextureUtils.changeTextureSize(papplet, pg_render, w, h, 0, resized);
     
-    pg_render.beginDraw();
-    pg_render.hint(PConstants.DISABLE_TEXTURE_MIPMAPS);
-    pg_render.background(0);
-    pg_render.blendMode(PConstants.REPLACE);
-    pg_render.shader(shader);
-    pg_render.noStroke();
-    pg_render.endDraw(); 
+    int w_sky = Math.max(1, w >> param.wh_sky_mult);
+    int h_sky = Math.max(1, h >> param.wh_sky_mult);
+    int w_sun = Math.max(1, w >> param.wh_sun_mult);
+    int h_sun = Math.max(1, h >> param.wh_sun_mult);
+    
+    resized[0] |= sky.resize(w_sky, h_sky);
+    resized[0] |= sun.resize(w_sun, h_sun);
+//    resized[0] |= geom.resize(w, h);
+    
+    return resized[0];
   }
   
-  public void updateMatrices(){
-    DwGLTextureUtils.copyMatrices((PGraphics3D) papplet.g, pg_render);
+  public void reset(){
+    sun.reset();
+    sky.reset();
   }
-//  public int STEP = 0;
   
+
   public void update(){
     
-//    updateMatrices();
+    DwGLTextureUtils.copyMatrices((PGraphics3D) papplet.g, pg_render);
 
-    geom.update((PGraphics3D) papplet.g);
-
+    geom.update(pg_render);
     sky.update();
     sun.update();
-    
-    PGraphics3D pg     = pg_render;
-    PGraphics3D pg_sun = sun.getSrc();
-    PGraphics3D pg_sky = sky.getSrc();
     
     float w = pg_render.width;
     float h = pg_render.height;
@@ -114,40 +112,22 @@ public class DwSkyLightRenderer {
     float[] sky_col = sky.param.rgb;
     float[] sun_col = sun.param.rgb;
     
-//    STEP = 0;
-    pg.beginDraw();
-    updateMatrices();
-    pg.clear();
-    pg.shader(shader);
+    pg_render.beginDraw();
+    pg_render.blendMode(PConstants.REPLACE);
+    pg_render.clear();
+    pg_render.shader(shader);
     shader.set("wh", w, h);
-    shader.set("tex_sky", pg_sky);
-    shader.set("tex_sun", pg_sun);
+    shader.set("tex_sky", sky.getSrc());
+    shader.set("tex_sun", sun.getSrc());
     shader.set("mult_sun", sun_col[0] * sun_int, sun_col[1] * sun_int, sun_col[2] * sun_int);
     shader.set("mult_sky", sky_col[0] * sky_int, sky_col[1] * sky_int, sky_col[2] * sky_int);
     shader.set("gamma", param.gamma);
-    scene_display.display(pg);
-    
-//    pg.resetMatrix();
-//    pg.resetProjection();
-//    pg.noStroke();
-//    pg.fill(0);
-//    pg.rect(-1,-1,2,2);
-    
-    
-//    STEP = 1;
-////    pg.clear();
-//    pg.resetShader();
-//    scene_display.display(pg);
-    
-    pg.endDraw();
-    
+    scene_display.display(pg_render);
+    pg_render.endDraw();
+  }
+  
 
-  }
-  
-  
-  public void reset(){
-    sun.reset();
-    sky.reset();
-  }
   
 }
+
+

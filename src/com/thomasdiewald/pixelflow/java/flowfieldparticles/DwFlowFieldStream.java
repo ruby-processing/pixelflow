@@ -158,8 +158,8 @@ public class DwFlowFieldStream {
       shader_display.uniform4fv    ("col_B"          , 1, param.col_B);
       shader_display.uniformTexture("tex_position_A" , tex_position.src);
       shader_display.uniformTexture("tex_position_B" , tex_position.dst);
-      shader_display.drawFullScreenLines(0, 0, w_dst, h_dst, w_position * h_position, param.line_width, param.smooth);
-      shader_display.end();
+     // shader_display.drawFullScreenLines(0, 0, w_dst, h_dst, w_position * h_position, param.line_width, param.smooth);
+      shader_display.drawFullScreenLines(w_position * h_position, param.line_width, param.smooth);
       context.endDraw();
     }
 

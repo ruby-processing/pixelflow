@@ -9,10 +9,8 @@
 
 require 'pixelflow' # library as a gem
 
-# java_import 'com.thomasdiewald.pixelflow.java.DwPixelFlow'
-# java_import 'com.thomasdiewald.pixelflow.java.imageprocessing.DwShadertoy'
-include PixelFlow
-include ShaderToy
+java_import 'com.thomasdiewald.pixelflow.java.DwPixelFlow'
+java_import 'com.thomasdiewald.pixelflow.java.imageprocessing.DwShadertoy'
 #
 # Shadertoy Demo:   https://www.shadertoy.com/view/Xds3zN
 # Shadertoy Author: https://www.shadertoy.com/user/iq

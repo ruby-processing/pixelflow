@@ -82,14 +82,14 @@ public class MinMaxGlobal {
   
   
   public void resize(DwGLTexture tex){
-    resize(tex.internalFormat, tex.w, tex.h, tex.format, tex.type, tex.filter, tex.num_channel, tex.byte_per_channel);
+    resize(tex.internalFormat, tex.w, tex.h, tex.format, tex.type, tex.num_channel, tex.byte_per_channel);
   }
   
   public void resize(PGraphicsOpenGL pg){
-    resize(GL2.GL_RGBA8, pg.width, pg.height, GL2.GL_RGBA, GL2.GL_UNSIGNED_BYTE, GL2.GL_LINEAR, 4, 1);
+    resize(GL2.GL_RGBA8, pg.width, pg.height, GL2.GL_RGBA, GL2.GL_UNSIGNED_BYTE, 4, 1);
   }
   
-  public void resize(int iformat, int w, int h, int format, int type, int filter, int num_channel, int byte_per_channel){
+  public void resize(int iformat, int w, int h, int format, int type, int num_channel, int byte_per_channel){
 
     // 1) compute number of blur layers
     layers = Math.max(DwUtils.logNceil(w, STEP_SIZE), DwUtils.logNceil(h, STEP_SIZE)) + 1;
@@ -109,8 +109,7 @@ public class MinMaxGlobal {
         w = 2;
         h = 1;
       }
-      
-      tex[i].resize(context, iformat, w, h, format, type, filter, GL2.GL_MIRRORED_REPEAT, num_channel, byte_per_channel);
+      tex[i].resize(context, iformat, w, h, format, type, GL2.GL_NEAREST, GL2.GL_MIRRORED_REPEAT, num_channel, byte_per_channel);
       w = (int) Math.ceil(w / (float) STEP_SIZE);
       h = (int) Math.ceil(h / (float) STEP_SIZE);
     }
@@ -141,54 +140,43 @@ public class MinMaxGlobal {
   
 
   private void apply(boolean MIN, boolean MAX){
-    context.begin();
-    
-    if(MIN){
-      for(int i = 1; i < layers; i++){
-        
-        DwGLTexture dst = tex[i];
-        DwGLTexture src = tex[i-1];
-
-        context.beginDraw(dst);
-        shader_min.begin();
-        shader_min.uniform2f("wh_rcp", 1f/src.w, 1f/src.h);
-        shader_min.uniformTexture("tex", src);
-        if(i == layers-1){
-          shader_min.uniform2i("off", 1, 0);
-          shader_min.drawFullScreenQuad(0,0,1,1); // pixel[0,0] == min
-        } else {
-          shader_min.uniform2i("off", 0, 0);
-          shader_min.drawFullScreenQuad();
-        }
-        shader_min.end();
-        context.endDraw();
-      }
-    }
-    
-    if(MAX){
-      for(int i = 1; i < layers; i++){
-        
-        DwGLTexture dst = tex[i];
-        DwGLTexture src = tex[i-1];
-
-        context.beginDraw(dst);
-        shader_max.begin();
-        shader_max.uniform2f("wh_rcp", 1f/src.w, 1f/src.h);
-        shader_max.uniformTexture("tex", src);
-        if(i == layers-1){
-          shader_max.uniform2i("off", 1, 0);
-          shader_max.drawFullScreenQuad(1,0,1,1); // pixel[1,0] == max
-        } else {
-          shader_max.uniform2i("off", 0, 0);
-          shader_max.drawFullScreenQuad();
-        }
-        shader_max.end();
-        context.endDraw();
-      }
-    }
-    
-    context.end("MinMaxGlobal.apply");
+    context.begin(); 
+    if(MIN) run(shader_min, 0);
+    if(MAX) run(shader_max, 1);
+    context.end();
   }
+  
+  /**
+   * <pre>
+   *  min ... frag[0,0] 
+   *  max ... frag[1,0] 
+   * </pre>
+   * @param shader
+   * @param ox frag offset x
+   * @param oy frag offset y
+   */
+  private void run(DwGLSLProgram shader, int ox){
+    shader.begin();
+    for(int i = 1; i < layers; i++){
+      DwGLTexture dst = tex[i];
+      DwGLTexture src = tex[i-1];
+      context.beginDraw(dst);
+      if(i == layers-1){
+        shader.scissors(ox, 0, 1, 1); 
+        shader.uniform2i("off", ox, 0);
+      } else {
+        shader.uniform2i("off", 0, 0);
+      }
+      shader.uniform2f("wh_rcp", 1f/src.w, 1f/src.h);
+      shader.uniformTexture("tex", src);
+      shader.drawFullScreenQuad();
+      context.endDraw("MinMaxGlobal.run");
+    }
+    shader.end();
+  }
+  
+  
+  
   
  
   /**
