@@ -1,7 +1,7 @@
 project 'pixelflow' do
 
   model_version '4.0.0'
-  id 'ruby-processing:pixelflow:1.1.8'
+  id 'ruby-processing:pixelflow:1.1.9'
   packaging 'jar'
 
   description 'PixelFlow-library for JRubyArt'
