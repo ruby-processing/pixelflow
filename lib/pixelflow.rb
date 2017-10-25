@@ -36,7 +36,7 @@ if RUBY_PLATFORM == 'java'
 
   module DwGL
     include_package  = 'com.thomasdiewald.pixelflow.java.dwgl'
-    java_import 'com.thomasdiewald.pixelflow.java.dwgl.DwGLTextureUtils'
+    java_import 'com.thomasdiewald.pixelflow.java.utils.DwGLTextureUtils'
   end
 
   module PixelFlowUtils

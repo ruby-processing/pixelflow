@@ -241,6 +241,7 @@ end
 
 def createGUI
   @cp5 = ControlP5.new(self)
+
   sx = 100
   sy = 14
   oy = (sy * 1.5).to_i
@@ -360,6 +361,7 @@ def createGUI
                          .add_item(group_fluid)
                          .add_item(group_display)
                          .open(4)
+
 end
 
 def controlEvent(event)
